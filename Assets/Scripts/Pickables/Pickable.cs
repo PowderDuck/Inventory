@@ -1,3 +1,4 @@
+using Assets.Scripts.Controllers;
 using Assets.Scripts.Enums;
 using Assets.Scripts.Interactables;
 using UnityEngine;
@@ -18,11 +19,20 @@ namespace Assets.Scripts.Pickables
 
         public abstract PickableType Type { get; }
 
-        protected Rigidbody Rigidbody { get; private set; } = default!;
+        public Rigidbody Rigidbody { get; private set; } = default!;
 
         protected virtual void Start()
         {
             Rigidbody = GetComponent<Rigidbody>();
         }
+
+        public override void Interact(object subject)
+        {
+            if (subject is GameController controller)
+            {
+                controller.SetTarget(this);
+            }
+        }
+
     }
 }

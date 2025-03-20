@@ -1,6 +1,5 @@
 using Assets.Scripts.Constants;
 using Assets.Scripts.Interactables;
-using Assets.Scripts.Managers;
 using Assets.Scripts.Pickables;
 using UnityEngine;
 
@@ -10,56 +9,76 @@ namespace Assets.Scripts.Controllers
     {
         [SerializeField] private float _maxDistance = 5f;
 
-        private Interactable _target = default!;
+        [SerializeField] private float _releaseForce = 100f;
+        [SerializeField] private Transform _targetPosition = default!;
+
 
         private RaycastHit _hitInfo = default!;
-        private Ray _ray = new();
 
-        // TODO : Verification is Required
-        private Ray LookRay
-        {
-            get
-            {
-                _ray.origin = transform.position;
-                _ray.direction = transform.forward;
+        public Pickable Target { get; private set; } = default!;
 
-                return _ray;
-            }
-        }
-
-        private bool _isPressing = false;
-        private float _currentPressTime = 0f;
-
-        private void Awake()
-        {
-            StartCoroutine(
-                NetworkManager.UpdateInventoryStatus(
-                    new()
-                    {
-                        Type = FindObjectOfType<Pickable>().Type,
-                        IsSet = false
-                    }));
-        }
+        public bool IsPressing { get; private set; } = false;
 
         private void Update()
         {
             if (InputConstants.SelectPressed)
             {
-                _isPressing = true;
-                _currentPressTime = InputConstants.LongPress;
+                IsPressing = true;
+                ProbeInteractables();
             }
 
+            if (InputConstants.SelectReleased)
+            {
+                IsPressing = false;
+                ProbeInteractables();
+            }
+
+            HandleTarget();
+        }
+
+        private void ProbeInteractables()
+        {
             if (Physics.Raycast(
-                    LookRay,
+                    Camera.main.ScreenPointToRay(Input.mousePosition),
                     out _hitInfo,
                     maxDistance: _maxDistance))
             {
                 if (_hitInfo.collider
                     .TryGetComponent<Interactable>(out var interactable))
                 {
-                    _target = interactable;
-                    Debug.Log($"Pressed the Interactable {_target.name}");
+                    interactable.Interact(this);
+
+                    var message = IsPressing ?
+                        $"Pressed the Interactable {interactable.name}"
+                        : $"Released on Interactable {interactable.name}";
+                    Debug.Log(message);
                 }
+            }
+        }
+
+        private void HandleTarget()
+        {
+            if (Target == null)
+            {
+                return;
+            }
+        }
+
+        public void SetTarget(Pickable pickable)
+        {
+            ReleaseTarget();
+            Target = pickable;
+        }
+
+        private void ReleaseTarget()
+        {
+            if (Target != null)
+            {
+                Target.transform.SetParent(null);
+                Target.Rigidbody
+                    .AddForce(transform.forward * _releaseForce);
+
+                Target = null;
             }
         }
     }
